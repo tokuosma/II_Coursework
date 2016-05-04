@@ -23,9 +23,9 @@ def main():
     UDPs.bind(('', portUDP))
 
     TCPs.connect((servAddr, servPort))
-    TCPs.send(bytes("HELO 10001\r\n", "utf-8"))
+    TCPs.send(bytes("HELO 10001 M\r\n", "utf-8"))
     data = TCPs.recv(4096).decode("utf-8")
-    destPort = int(data.partition(" ")[2].strip())
+    destPort = int(data.split(" ")[1])
 
     message = bytes("Ekki-ekki-ekki-ekki-PTANG.", "utf-8")
     dataOut = struct.pack("!??HH64s", False, True, len(message), 0, message)
@@ -39,8 +39,12 @@ def main():
         stringList.append(dataIn[4].decode("utf-8").strip())
         remaining = dataIn[3]
         done = dataIn[0]
+        
 
         while not (remaining  == 0):
+            
+            print("Message piece: " + dataIn[4].decode("utf-8"))
+            print("Remaining: " + str(remaining))
             received = UDPs.recvfrom(1024)
             dataIn = struct.unpack("!??HH64s", received[0])
             stringList.append(dataIn[4].decode("utf-8").strip())
@@ -49,7 +53,6 @@ def main():
 
         #question = dataIn[4].decode("utf-8").strip()
         question = pieces.parse_message(stringList)
-        print(question)
         if not done:
             ans = answer(question)
             print(ans)
