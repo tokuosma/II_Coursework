@@ -1,6 +1,7 @@
 import sys 
 import struct
 import socket 
+import pieces
 from questions import answer
  
 def main(): 
@@ -26,25 +27,33 @@ def main():
     data = TCPs.recv(4096).decode("utf-8")
     destPort = int(data.partition(" ")[2].strip())
 
-    eom = False
-    ack = True
     message = bytes("Ekki-ekki-ekki-ekki-PTANG.", "utf-8")
-    length = len(message)
-    remaining = 0
-    dataOut = struct.pack("!??HH64s", eom, ack, length, remaining, message)
+    dataOut = struct.pack("!??HH64s", False, True, len(message), 0, message)
     UDPs.sendto(dataOut, (servAddr, destPort))
     
     done = False
     while not done:
         received = UDPs.recvfrom(1024)
         dataIn = struct.unpack("!??HH64s", received[0])
-        question = dataIn[4].decode("utf-8").strip()
+        stringList = []
+        stringList.append(dataIn[4].decode("utf-8").strip())
+        remaining = dataIn[3]
         done = dataIn[0]
+
+        while not (remaining  == 0):
+            received = UDPs.recvfrom(1024)
+            dataIn = struct.unpack("!??HH64s", received[0])
+            stringList.append(dataIn[4].decode("utf-8").strip())
+            remaining = dataIn[3]
+            done = dataIn[0]
+
+        #question = dataIn[4].decode("utf-8").strip()
+        question = pieces.parse_message(stringList)
         print(question)
         if not done:
             ans = answer(question)
             print(ans)
-            dataOut = struct.pack("!??HH64s", eom, ack, len(ans), 0, bytes(ans, "utf-8"))
+            dataOut = struct.pack("!??HH64s", False, True, len(ans), 0, bytes(ans, "utf-8"))
             UDPs.sendto(dataOut, (servAddr, destPort))
 
     UDPs.close()
