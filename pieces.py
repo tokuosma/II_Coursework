@@ -26,7 +26,7 @@ def pieces(message):
 	return pieces
 	
 def parse_message(pieces):
-	parsed_message = ""
-	for x in pieces:
-		 parsed_message = parsed_message + x
-	return parsed_message
+    parsed_message = ""
+    for x in pieces:
+        parsed_message = parsed_message + x
+    return parsed_message

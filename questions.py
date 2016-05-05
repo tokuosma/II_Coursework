@@ -9,11 +9,7 @@ questions = {
   "I don't know that.", 
   "What is the air-speed velocity of an unladen swallow?": 
   "What do you mean? An African or European swallow?",
-  "What is the air-speed velocity ofan unladen swallow?": 
-  "What do you mean? An African or European swallow?",
-  "What is the air-speed velocity of an unladenswallow?": 
-  "What do you mean? An African or European swallow?",
-} 
+  } 
  
  
 def answer(question): 

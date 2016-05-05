@@ -15,8 +15,11 @@ def main():
     except TypeError: 
         sys.exit("port must be an integer") 
  
+    print("")
+    print("Creating TCP socket")
     TCPs = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 
+    print("Finding free port for UDP Socket")
     portUDP = 10001
     while True:
         try:
@@ -31,7 +34,8 @@ def main():
 
     TCPs.connect((servAddr, servPort))
     print("TCP connection formed to address %s at port %d" % (servAddr, servPort))
-    TCPs.send(bytes("HELO 10001 M\r\n", "utf-8"))
+    helo = ("HELO %d M\r\n" % portUDP)
+    TCPs.send(bytes( helo, "utf-8"))
     data = TCPs.recv(4096).decode("utf-8")
     destPort = int(data.split(" ")[1])
     print("Server UDP port: %d" % destPort)
@@ -46,7 +50,7 @@ def main():
         received = UDPs.recvfrom(1024)
         dataIn = struct.unpack("!??HH64s", received[0])
         stringList = []
-        stringList.append(dataIn[4].decode("utf-8").strip())
+        stringList.append(dataIn[4].decode("utf-8"))
         remaining = dataIn[3]
         done = dataIn[0]
         
@@ -54,7 +58,7 @@ def main():
         while not (remaining  == 0):
             received = UDPs.recvfrom(1024)
             dataIn = struct.unpack("!??HH64s", received[0])
-            stringList.append(dataIn[4].decode("utf-8").strip())
+            stringList.append(dataIn[4].decode("utf-8"))
             remaining = dataIn[3]
             done = dataIn[0]
 
