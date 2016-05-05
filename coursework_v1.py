@@ -3,7 +3,6 @@ import struct
 import socket 
 import pieces
 from questions import answer
-from questions import newAnswer
 from questions import QuestionNotFoundException
  
 def main(): 
@@ -16,21 +15,30 @@ def main():
     except TypeError: 
         sys.exit("port must be an integer") 
  
-    port = 10000
     TCPs = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-    TCPs.bind(('', port)) 
 
-    UDPs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     portUDP = 10001
-    UDPs.bind(('', portUDP))
+    while True:
+        try:
+            UDPs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            UDPs.bind(('', portUDP))
+            print("UDP socket bound to port: %d" % portUDP)
+            break
+        except OSError:
+            print("Port %d already taken. Trying next port" % portUDP)
+            portUDP = portUDP + 1
+            continue
 
     TCPs.connect((servAddr, servPort))
+    print("TCP connection formed to address %s at port %d" % (servAddr, servPort))
     TCPs.send(bytes("HELO 10001 M\r\n", "utf-8"))
     data = TCPs.recv(4096).decode("utf-8")
     destPort = int(data.split(" ")[1])
+    print("Server UDP port: %d" % destPort)
 
     message = bytes("Ekki-ekki-ekki-ekki-PTANG.", "utf-8")
     dataOut = struct.pack("!??HH64s", False, True, len(message), 0, message)
+    print("TCP handshake complete. Starting UDP transfer.")
     UDPs.sendto(dataOut, (servAddr, destPort))
     
     done = False
@@ -56,16 +64,15 @@ def main():
         if not done:
             try:
                 ans = answer(question)
+                print(ans)
                 ansPieces = pieces.pieces(ans)
                 remaining_bytes = len(ansPieces) * 64
             except QuestionNotFoundException:
-                print("Pylly")
                 error_message = struct.pack("!??HH64s", False, False, 64, 0, bytes("Send again.", "utf-8")) 
                 UDPs.sendto(error_message, (servAddr, destPort))
                 continue
             else:
                 for piece in ansPieces:
-                    print(piece)
                     remaining_bytes -= 64
                     dataOut = struct.pack("!??HH64s", False, True, len(piece), remaining_bytes, bytes(piece, "utf-8"))
                     UDPs.sendto(dataOut, (servAddr, destPort))
