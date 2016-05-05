@@ -12,10 +12,12 @@ def main():
     try: 
         servAddr= sys.argv[1]
         servPort= int(sys.argv[2]) 
+
     except TypeError: 
         sys.exit("port must be an integer") 
  
-    print("")
+    print("STOP!")
+    print("Who would cross the bridge of death must answer me these questions n.")
     print("Creating TCP socket")
     TCPs = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 
@@ -29,9 +31,11 @@ def main():
             break
         except OSError:
             print("Port %d already taken. Trying next port" % portUDP)
+            UDPs.close()
             portUDP = portUDP + 1
             continue
 
+    print("Trying to form connection to %s at port %d" % (servAddr, servPort))
     TCPs.connect((servAddr, servPort))
     print("TCP connection formed to address %s at port %d" % (servAddr, servPort))
     helo = ("HELO %d M\r\n" % portUDP)

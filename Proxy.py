@@ -6,7 +6,10 @@ import struct
 def main():
   portTCPin = 10000
   portTCPout = 10001
-  portUDP = 10002
+  portUDPc = 10002
+  portUDPs = 10003
+
+  # Create TCP sockets for client and server
   success = False  
   while not success: 
     try:
@@ -16,56 +19,91 @@ def main():
         TCPin = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         TCPin.bind(('', portTCPin))
         success = True
+        print( "TCP socket for clients bound at port %d" % portTCPin)
     except OSError:
       TCPin.close()
       portTCPin += 1
-  success = False
   TCPout = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+  # Create UDP socket for client
+  success = False
   while not success:
     try:
-      if portUDP > 10100:
+      if portUDPc > 10100:
         sys.exit()
       else:
-          UDPs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-          UDPs.bind(('', portUDP))
-          success = True
+        UDPc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        UDPc.bind(('', portUDPc))
+        success = True
+    except OSError:
+      UDPc.close()
+      portUDPc += 1      
+
+  # Create UDP socket for server
+  success = False
+  while not success:
+    try:
+      if portUDPs > 10100:
+        sys.exit()
+      else:
+        UDPs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        UDPs.bind(('', portUDPs))
+        success = True
     except OSError:
       UDPs.close()
-      portUDP += 1      
+      portUDPs += 1      
+
+
+
+  # TCP handshake
   TCPin.listen(1)
   while True:
     connection, addr = TCPin.accept()
+    print("Connection from %s:%d" % addr)
     data = connection.recv(4096).decode("utf-8")
     messageList = data.split(" ")
     clientport = int(messageList[1])
-    messageList[1] = str(portUDP)
-    ClientHelo = "{} {}".format(messageList[0], messageList[1])
+    ClientHelo = "{} {}".format(messageList[0], str(portUDPs))
     TCPout.connect(("ii.virtues.fi", 10000))
     TCPout.send(bytes(ClientHelo, "utf-8"))   
     ServerHelo = TCPout.recv(4096).decode("utf-8")
-    messageList2 = data.split(" ")
+    messageList2 = ServerHelo.split(" ")
     serverport = int(messageList2[1])
-    messageList2[1] = str(portUDP)
-    ServerHelo = "{} {}".format(messageList2[0], messageList2[1])
+    print(serverport)
+    ServerHelo = "{} {}".format(messageList2[0], str(portUDPc))
     connection.send(bytes(ServerHelo, "utf-8"))
-    TCPin.close()
-    TCPout.close()
     break
+
   exit = False
   client = True
+  count = 0
   while not exit:
+    print("Count: %d" % count)
+
     if client == True:
-      received = UDPs.recvfrom(4096)
+      
+      print("Listening to port %d" % portUDPc)
+      received = UDPc.recvfrom(4096)[0]
+      print(received)
       client = False
-      UDPs.sendto(received, serveraddr)
+      print("Sending to ii.virtues.fi:%d" % serverport)
+      UDPs.sendto(received, ("ii.virtues.fi", serverport))
+      count += 1
     elif client == False:
-      received = UDPs.recvfrom(4096)
+      print("Listening to port %d" % portUDPs)
+      received = UDPs.recvfrom(4096)[0]
+      print(received)
       client = True
-      UDPs.sendto(received, clientaddr)
-      break
+      UDPc.sendto(received, ("localhost", clientport))
+      count += 1  
   UDPs.close()       
-if __name__ == '__main__': 
+  UDPc.close()
+  TCPin.close()
+  TCPout.close()
+
+if __name__ == "__main__": 
   try: 
     main() 
   except KeyboardInterrupt: 
-    sys.exit() 
+    sys.exit(1)
+
