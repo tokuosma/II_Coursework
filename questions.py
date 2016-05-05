@@ -17,12 +17,34 @@ questions = {
  
  
 def answer(question): 
-  a = list() 
-  while True: 
-    part, separator, question = question.partition('?') 
-    part = part.lstrip() + separator 
-    if part in questions: 
-       a.append(questions[part]) 
-    if not question: 
-      break 
-  return ' '.join(a) 
+    a = list() 
+    while True: 
+        parts = question.partition('?') 
+        part = (parts[0].strip() + parts[1].strip()).replace("\x00", "")
+        print(len(part))
+        question = parts[2]
+        if part in questions: 
+            a.append(questions[part]) 
+        else:
+            if part:
+                raise QuestionNotFoundException("Question not found!")
+        if not question: 
+            break 
+    return ' '.join(a) 
+
+def newAnswer(question):
+    parts = question.split("?")
+    print(parts)
+    a = list()
+    for part in parts:
+        if part:
+            q = part + "?"
+            q = q.strip()
+        
+    return
+
+
+class QuestionNotFoundException(Exception):
+    def __init__(self, message):
+        self.message = message
+

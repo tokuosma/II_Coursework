@@ -1,7 +1,10 @@
 import sys 
 import struct
 import socket 
+import pieces
 from questions import answer
+from questions import newAnswer
+from questions import QuestionNotFoundException
  
 def main(): 
     if len(sys.argv) < 3: 
@@ -22,30 +25,51 @@ def main():
     UDPs.bind(('', portUDP))
 
     TCPs.connect((servAddr, servPort))
-    TCPs.send(bytes("HELO 10001\r\n", "utf-8"))
+    TCPs.send(bytes("HELO 10001 M\r\n", "utf-8"))
     data = TCPs.recv(4096).decode("utf-8")
-    destPort = int(data.partition(" ")[2].strip())
+    destPort = int(data.split(" ")[1])
 
-    eom = False
-    ack = True
     message = bytes("Ekki-ekki-ekki-ekki-PTANG.", "utf-8")
-    length = len(message)
-    remaining = 0
-    dataOut = struct.pack("!??HH64s", eom, ack, length, remaining, message)
+    dataOut = struct.pack("!??HH64s", False, True, len(message), 0, message)
     UDPs.sendto(dataOut, (servAddr, destPort))
     
     done = False
     while not done:
         received = UDPs.recvfrom(1024)
         dataIn = struct.unpack("!??HH64s", received[0])
-        question = dataIn[4].decode("utf-8").strip()
+        stringList = []
+        stringList.append(dataIn[4].decode("utf-8").strip())
+        remaining = dataIn[3]
         done = dataIn[0]
+        
+
+        while not (remaining  == 0):
+            received = UDPs.recvfrom(1024)
+            dataIn = struct.unpack("!??HH64s", received[0])
+            stringList.append(dataIn[4].decode("utf-8").strip())
+            remaining = dataIn[3]
+            done = dataIn[0]
+
+        #question = dataIn[4].decode("utf-8").strip()
+        question = pieces.parse_message(stringList)
         print(question)
         if not done:
-            ans = answer(question)
-            print(ans)
-            dataOut = struct.pack("!??HH64s", eom, ack, len(ans), 0, bytes(ans, "utf-8"))
-            UDPs.sendto(dataOut, (servAddr, destPort))
+            try:
+                ans = answer(question)
+                ansPieces = pieces.pieces(ans)
+                remaining_bytes = len(ansPieces) * 64
+            except QuestionNotFoundException:
+                print("Pylly")
+                error_message = struct.pack("!??HH64s", False, False, 64, 0, bytes("Send again.", "utf-8")) 
+                UDPs.sendto(error_message, (servAddr, destPort))
+                continue
+            else:
+                for piece in ansPieces:
+                    print(piece)
+                    remaining_bytes -= 64
+                    dataOut = struct.pack("!??HH64s", False, True, len(piece), remaining_bytes, bytes(piece, "utf-8"))
+                    UDPs.sendto(dataOut, (servAddr, destPort))
+                
 
     UDPs.close()
     TCPs.close()

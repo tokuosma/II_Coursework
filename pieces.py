@@ -4,7 +4,8 @@ from math import ceil
 
 def pieces(message):
 	if len(message) <= 64:
-		return message.split()
+                pieces = [message]
+                return pieces
 	# Gets the number of pieces required
 	count = int(ceil(len(message) / 64))
 	pieces = []
