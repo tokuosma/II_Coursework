@@ -1,60 +1,69 @@
 import sys 
 import socket 
 import pieces
+import struct
  
 def main():
-  portTCPin = 10002
-  portTCPout = 10004
+  portTCPin = 10000
+  portTCPout = 10001
+  portUDP = 10002
   success = False  
   while not success: 
     try:
-      TCPin = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-      TCPin.bind(('', portTCPin))
-      TCPout = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-      TCPout.bind(('', portTCPout))
-      success = True
+      if portTCPin > 10100:
+        sys.exit()
+      else:
+        TCPin = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        TCPin.bind(('', portTCPin))
+        success = True
     except OSError:
       TCPin.close()
-      port += 1    
+      portTCPin += 1
   success = False
-  UDPs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  portUDP = 10003
-  UDPs.bind(('', portUDP))   
+  TCPout = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  while not success:
+    try:
+      if portUDP > 10100:
+        sys.exit()
+      else:
+          UDPs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+          UDPs.bind(('', portUDP))
+          success = True
+    except OSError:
+      UDPs.close()
+      portUDP += 1      
   TCPin.listen(1)
   while True:
     connection, addr = TCPin.accept()
     data = connection.recv(4096).decode("utf-8")
     messageList = data.split(" ")
-    clientport = messageList[1]
+    clientport = int(messageList[1])
     messageList[1] = str(portUDP)
-    dataout = "{} {}".format(messageList[0], messageList[1])
+    ClientHelo = "{} {}".format(messageList[0], messageList[1])
     TCPout.connect(("ii.virtues.fi", 10000))
-    TCPout.send(bytes(dataout, "utf-8"))    
+    TCPout.send(bytes(ClientHelo, "utf-8"))   
+    ServerHelo = TCPout.recv(4096).decode("utf-8")
+    messageList2 = data.split(" ")
+    serverport = int(messageList2[1])
+    messageList2[1] = str(portUDP)
+    ServerHelo = "{} {}".format(messageList2[0], messageList2[1])
+    connection.send(bytes(ServerHelo, "utf-8"))
+    TCPin.close()
+    TCPout.close()
     break
-  #while True:
-    #connection, addr = TCPin.accept()
-    #data = connection.recv(4096).decode("utf-8")
-    #messageList = data.split(" ")
-    #serverport = messageList[1]
-    #messageList[1] = str(portUDP)
-    #print(messageList)
-    #dataout = "{} {}".format(messageList[0], messageList[1])
-    #print(dataout)
-    #TCPout.connect(("localhost", 10002))
-    #TCPout.send(bytes(dataout, "utf-8"))
-    #break 
-  #UDPs.listen(1)
-  print("loppusuora")
-  while True:
-    (UDPs, addr) = UDPs.accept()
-    msg = UDPs.recv(4096)
-    print(msg)
-
-  while True:
-    UDPs.close()
-    break
-  TCPin.close()
-  
+  exit = False
+  client = True
+  while not exit:
+    if client == True:
+      received = UDPs.recvfrom(4096)
+      client = False
+      UDPs.sendto(received, serveraddr)
+    elif client == False:
+      received = UDPs.recvfrom(4096)
+      client = True
+      UDPs.sendto(received, clientaddr)
+      break
+  UDPs.close()       
 if __name__ == '__main__': 
   try: 
     main() 
