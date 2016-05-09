@@ -38,11 +38,14 @@ def main():
     print("Trying to form connection to %s at port %d" % (servAddr, servPort))
     TCPs.connect((servAddr, servPort))
     print("TCP connection formed to address %s at port %d" % (servAddr, servPort))
-    helo = ("HELO %d M\r\n" % portUDP)
+    helo = ("HELO %d MI\r\n" % portUDP)
     TCPs.send(bytes( helo, "utf-8"))
-    data = TCPs.recv(4096).decode("utf-8")
+    received = TCPs.recvfrom(4096)
+    data = received[0].decode("utf-8")
     destPort = int(data.split(" ")[1])
-    print("Server UDP port: %d" % destPort)
+    destAddr = socket.gethostbyname(servAddr)
+
+    print("Server address: %s Server UDP port: %d" % (destAddr, destPort))
 
     message = bytes("Ekki-ekki-ekki-ekki-PTANG.", "utf-8")
     dataOut = struct.pack("!??HH64s", False, True, len(message), 0, message)
@@ -53,6 +56,27 @@ def main():
     while not done:
         received = UDPs.recvfrom(1024)
         dataIn = struct.unpack("!??HH64s", received[0])
+        senderAddress = received[1]
+        messageLength = len(dataIn[4].decode("utf-8").replace("\x00", ""))
+        if dataIn[2] != messageLength:
+            print( "Message lenght and header length do not match. Sending error message.")
+            message = "Send again."
+            error_message = struct.pack("!??HH64s", False, False, len(message), 0, bytes(message, "utf-8")) 
+            UDPs.sendto(error_message, (servAddr, destPort))
+            continue
+        if messageLength == 0:
+            print( "Empty message received. Sending error message.")
+            message = "Send again."
+            error_message = struct.pack("!??HH64s", False, False, len(message), 0, bytes(message, "utf-8")) 
+            UDPs.sendto(error_message, (servAddr, destPort))
+            continue
+        if senderAddress[0] != destAddr or senderAddress[1] != destPort:
+            print("Sender address does not match destination address. Sending error message.")
+            message = "Send again."
+            error_message = struct.pack("!??HH64s", False, False, len(message), 0, bytes(message, "utf-8")) 
+            UDPs.sendto(error_message, (servAddr, destPort))
+            continue
+
         stringList = []
         stringList.append(dataIn[4].decode("utf-8"))
         remaining = dataIn[3]
@@ -76,7 +100,9 @@ def main():
                 ansPieces = pieces.pieces(ans)
                 remaining_bytes = len(ansPieces) * 64
             except QuestionNotFoundException:
-                error_message = struct.pack("!??HH64s", False, False, 64, 0, bytes("Send again.", "utf-8")) 
+                print("Question not found. Sending error message.")
+                message = "Send again."
+                error_message = struct.pack("!??HH64s", False, False, len(message), 0, bytes(message, "utf-8")) 
                 UDPs.sendto(error_message, (servAddr, destPort))
                 continue
             else:
