@@ -102,6 +102,7 @@ def main():
       UDPc.sendto(received, ("localhost", clientport))
       count += 1
       if unpacked[0]:
+        print("EOM received from server. Closing connection.")
         break
   UDPs.close()       
   UDPc.close()
