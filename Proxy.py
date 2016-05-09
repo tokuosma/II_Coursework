@@ -63,7 +63,8 @@ def main():
     data = connection.recv(4096).decode("utf-8")
     messageList = data.split(" ")
     clientport = int(messageList[1])
-    ClientHelo = "{} {}".format(messageList[0], str(portUDPs))
+    print(messageList)
+    ClientHelo = "{} {} {}".format(messageList[0], str(portUDPs), messageList[2])
     TCPout.connect(("ii.virtues.fi", 10000))
     TCPout.send(bytes(ClientHelo, "utf-8"))   
     ServerHelo = TCPout.recv(4096).decode("utf-8")
@@ -77,6 +78,7 @@ def main():
   exit = False
   client = True
   count = 0
+  
   while not exit:
     print("Count: %d" % count)
 
@@ -84,18 +86,23 @@ def main():
       
       print("Listening to port %d" % portUDPc)
       received = UDPc.recvfrom(4096)[0]
-      print(received)
-      client = False
+      unpacked = struct.unpack("!??HH64s",received)
+      if unpacked[3] == 0:
+        client = False
+      
       print("Sending to ii.virtues.fi:%d" % serverport)
       UDPs.sendto(received, ("ii.virtues.fi", serverport))
       count += 1
     elif client == False:
       print("Listening to port %d" % portUDPs)
       received = UDPs.recvfrom(4096)[0]
-      print(received)
-      client = True
+      unpacked = struct.unpack("!??HH64s",received)
+      if unpacked[3] == 0:
+        client = True
       UDPc.sendto(received, ("localhost", clientport))
-      count += 1  
+      count += 1
+      if unpacked[0]:
+        break
   UDPs.close()       
   UDPc.close()
   TCPin.close()
